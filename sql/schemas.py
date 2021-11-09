@@ -32,7 +32,6 @@ class InvestmentBase(BaseModel):
     fairness: bool
     parameters_id: int
 
-
 class InvestmentCreate(InvestmentBase):
     pass
 

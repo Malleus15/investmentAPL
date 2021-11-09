@@ -11,7 +11,6 @@ class Game:
         self.duration_cpu = duration_cpu
         self.hosting_capacity = hosting_capacity
         self.investors_number = investors_number
-        self.investors_array = investors_array
 
     # the check of parameters is done by the game and not by the DataBase because the business logic is up to the game
     def check_parameters(self):
