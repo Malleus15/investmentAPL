@@ -1,16 +1,20 @@
 # benefit factor
 RT_BETA = 0.005
 NRT_BETA = 0.002
+NO_BETA = 0
+# benefit factor from cloud
+CHI = 0
 # mean for load
 RT_ETA = 1000
 NRT_ETA = 100
 # variation for load
-RT_SIGMA = RT_ETA/4
-NRT_SIGMA = NRT_ETA/4
+RT_SIGMA = RT_ETA / 4
+NRT_SIGMA = NRT_ETA / 4
 # conversion factor (from requests to millicore)
 GAMMA = 10
 # number of timeslots that we consider for the investment
 T_HORIZON = 96
+
 
 # BOUNDS
 # cpu's price

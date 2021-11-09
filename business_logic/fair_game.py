@@ -1,7 +1,7 @@
 import math
 
 import coop_properties as cp
-from game.game import Game
+from business_logic.game import Game
 
 
 class FairGame(Game):

@@ -4,7 +4,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-#from game import game
+#from business_logic import business_logic
 from sql import crud, models, schemas
 from sql.database import SessionLocal, engine
 
@@ -62,7 +62,7 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 
 @app.post("/users/parameters/", response_model=schemas.Parameters)
 def create_investment_for_user(parameters: schemas.ParametersCreate, db: Session = Depends(get_db)):
-   # if game.check_parameters(parameters):
+   # if business_logic.check_parameters(parameters):
 
         #return crud.create_user_parameters(db=db, parameters=parameters)
     raise HTTPException(status_code=400, detail="Bad request: some values in parameters are not allowed")

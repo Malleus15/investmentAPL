@@ -1,28 +1,19 @@
 import numpy as np
 
-from game import utils
-from game.game import Game
+from business_logic import utils
+from business_logic.game import Game
 
 
-def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capacity, duration_cpu, T_horizon=96,
-                    chi=0, ):
+def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capacity, duration_cpu, T_horizon=96):
+
     game = Game(investors_number, price_cpu, hosting_capacity, duration_cpu, T_horizon)
-    # the number of non realtime players is calculated removing from the investors number rt number and the Host investor
-    nrt_players_numb = investors_number - number_rt_players - 1
-    # feasible permutation are 2^(N-1)-1 instead of 2
+    # the number of non realtime players is calculated removing from the investors number rt number and the Host
+    # investor
+
     # each coalition element is a tuple player = (id, type)
     coalitions = utils.feasible_permutations(investors_number, number_rt_players)
     grand_coalition = coalitions[-1]
-    # Config manual or automatic
-    # automatic --> combinatorial configurations
-    if price_cpu is None:
-        configurations = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-    # manual --> only one configuration
-    else:
-        configurations = [price_cpu]
 
-    # to know which is the best coalition among
-    # all the coalition for all the configurations
     all_infos = []
     payoff_vector = []
     beta_centr = price_cpu / (duration_cpu * 96)  # are the time slots
@@ -69,7 +60,7 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
 
         print("Shapley value is in the core, the fair payoff is:", payoff_vector, "\n")
         # Further verification of the solution (payoff vector) in the core
-        # check_core = game.verify_properties(all_coal_payoffs, grand_coal_payoff, payoff_vector)
+        # check_core = business_logic.verify_properties(all_coal_payoffs, grand_coal_payoff, payoff_vector)
 
         if True:
             print("Coalition net incomes:", grand_coal_payoff)
@@ -80,7 +71,7 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
         print("Each player pay:\n")
 
         print("Proceeding with calculation of revenues vector and payments\n")
-        # res = game.how_much_rev_paym(payoff_vector, sol['x'])
+        # res = business_logic.how_much_rev_paym(payoff_vector, sol['x'])
         res = np.identity(investors_number)
 
         print("Revenue array:", res[0], "\n")

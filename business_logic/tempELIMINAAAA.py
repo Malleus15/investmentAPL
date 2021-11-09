@@ -1,6 +1,6 @@
 import numpy as np
 
-from game import Game
+from business_logic import Game
 import utils
 import os, psutil
 import time
@@ -117,7 +117,7 @@ def main(players_number=3, rt_players=None, p_cpu=1.5, horizon=years * 365, type
 
         print("Shapley value is in the core, the fair payoff is:", payoff_vector, "\n")
         # Further verification of the solution (payoff vector) in the core
-        # check_core = game.verify_properties(all_coal_payoffs, grand_coal_payoff, payoff_vector)
+        # check_core = business_logic.verify_properties(all_coal_payoffs, grand_coal_payoff, payoff_vector)
 
         if True:
             print("Coalition net incomes:", grand_coal_payoff)
@@ -132,7 +132,7 @@ def main(players_number=3, rt_players=None, p_cpu=1.5, horizon=years * 365, type
         print("Each player pay:\n")
 
         print("Proceeding with calculation of revenues vector and payments\n")
-        # res = game.how_much_rev_paym(payoff_vector, sol['x'])
+        # res = business_logic.how_much_rev_paym(payoff_vector, sol['x'])
         res = np.identity(players_number)
         y_axis_pr_NO.append(res[0][0])
         y_axis_pr_SP1.append(res[0][1])

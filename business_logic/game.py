@@ -1,18 +1,20 @@
 import numpy as np
 
-import game.coop_properties as cp
-from game import core
+import business_logic.coop_properties as cp
+from business_logic import core
 from scipy.optimize import linprog
 import constant as const
 
+
 class Game:
-    def __init__(self, p_cpu, duration_cpu, hosting_capacity, investors_number, investors_array):
-        self.p_cpu = p_cpu
+    def __init__(self, investors_number, price_cpu, hosting_capacity, duration_cpu):
+        self.coalition = None
+        self.p_cpu = price_cpu
         self.duration_cpu = duration_cpu
         self.hosting_capacity = hosting_capacity
         self.investors_number = investors_number
 
-    # the check of parameters is done by the game and not by the DataBase because the business logic is up to the game
+    # the check of parameters is done by the business_logic and not by the DataBase because the business logic is up to the business_logic
     def check_parameters(self):
         price_check = (const.MIN_PRICE_CPU <= self.price_cpu <= const.MAX_PRICE_CPU)
         # limited for computational reasons
@@ -43,17 +45,18 @@ class Game:
 
     def calculate_coal_payoff(self):
         # matrix with all the b for each player
-        b = np.zeros(shape=self.players_numb * const.T_HORIZON)
+        b = np.zeros(shape=self.investors_number * const.T_HORIZON)
         # if the network operator is not in the coalition or It is alone etc...
-        if (0, 'NO') not in coalition or ((0, 'NO'),) == coalition or (len(coalition) == 0) or (len(coalition) == 1):
+        if (0, 'NO') not in self.coalition or ((0, 'NO'),) == self.coalition or (len(self.coalition) == 0) or (
+                len(self.coalition) == 1):
             pass
         else:
             # we calculate utility function at t for a player only for SPs
             # coalition is a tuple that specify the type of player also
             indx = 2
-            for player in coalition[1:]:
+            for player in self.coalition[1:]:
                 # in the paper y_t^S
-                for t in range(T_horizon):
+                for t in range(const.T_HORIZON):
                     player_type = player[1]
                     tmp0 = self._player_utility_t(player_type)
                     b[indx] = tmp0
@@ -64,73 +67,76 @@ class Game:
         # cost vector with benefit factor and cpu price
         # we use a minimize-function, so to maximize we minimize the opposite
         # Creating c vector
-        tmp0 = expiration * np.concatenate((np.zeros(shape=T_horizon), betas[0] * np.ones(shape=T_horizon),
-                                            betas[1] * np.ones(shape=T_horizon)))
-        tmp1 = expiration * chi * np.ones(shape=(players_numb * T_horizon))
-        tmp2 = np.zeros(shape=players_numb)
-        c = np.concatenate((tmp0, tmp1, tmp2, [-p_cpu]), axis=0)
+        tmp0 = self.duration_cpu * np.concatenate(
+            (np.zeros(shape=const.T_HORIZON), betas[0] * np.ones(shape=const.T_HORIZON),
+             betas[1] * np.ones(shape=const.T_HORIZON)))
+        tmp1 = self.duration_cpu * const.CHI * np.ones(shape=(self.investors_number * const.T_HORIZON))
+        tmp2 = np.zeros(shape=self.investors_number)
+        c = np.concatenate((tmp0, tmp1, tmp2, [-self.p_cpu]), axis=0)
         # Creating A matrix
-        identity = np.identity(players_numb * T_horizon)
-        zeros = np.zeros(shape=(players_numb * T_horizon, players_numb * T_horizon))
-        zeros_column = np.zeros(shape=(players_numb * T_horizon, 1))
-        tmp0 = np.zeros(shape=(players_numb * T_horizon, players_numb))
+        identity = np.identity(self.investors_number * const.T_HORIZON)
+        zeros = np.zeros(shape=(self.investors_number * const.T_HORIZON, self.investors_number * const.T_HORIZON))
+        zeros_column = np.zeros(shape=(self.investors_number * const.T_HORIZON, 1))
+        tmp0 = np.zeros(shape=(self.investors_number * const.T_HORIZON, self.investors_number))
         mega_row_A0 = np.concatenate((identity, zeros, tmp0, zeros_column), axis=1)
 
         tmp = 0
-        for col in range(players_numb):
-            for row in range(T_horizon):
+        for col in range(self.investors_number):
+            for row in range(const.T_HORIZON):
                 tmp0[row + tmp, col] = -1
-            tmp += T_horizon
+            tmp += const.T_HORIZON
 
         mega_row_A1 = np.concatenate((identity, zeros, tmp0, zeros_column), axis=1)
 
         mega_row_A2 = np.concatenate((zeros, identity, tmp0, zeros_column), axis=1)
 
-        tmp = np.zeros(shape=(players_numb * T_horizon, players_numb))
+        tmp = np.zeros(shape=(self.investors_number * const.T_HORIZON, self.investors_number))
         mega_row_A3 = np.concatenate((zeros, identity, -tmp, zeros_column), axis=1)
 
-        tmp0 = np.zeros(shape=(1, 2 * players_numb * T_horizon))
-        tmp1 = np.zeros(shape=(1, players_numb))
+        tmp0 = np.zeros(shape=(1, 2 * self.investors_number * const.T_HORIZON))
+        tmp1 = np.zeros(shape=(1, self.investors_number))
         mega_row_A4 = np.concatenate((tmp0, tmp1, [[-1]]), axis=1)
 
-        tmp1 = np.ones(shape=(1, players_numb))
+        tmp1 = np.ones(shape=(1, self.investors_number))
         A_eq = np.concatenate((tmp0, tmp1, [[-1]]), axis=1)
         b_eq = [[0]]
 
         A = np.concatenate((mega_row_A0, mega_row_A1, mega_row_A2, mega_row_A3, mega_row_A4), axis=0)
 
-        tmp0 = np.zeros(shape=(players_numb * T_horizon))
-        b = np.concatenate((b, tmp0, b, tmp0, [HC]), axis=0)
+        tmp0 = np.zeros(shape=(self.investors_number * const.T_HORIZON))
+        b = np.concatenate((b, tmp0, b, tmp0, [self.hosting_capacity]), axis=0)
         # for A_ub and b_ub I change the sign to reduce the matrices in the desired form
-        bounds = ((0, None),) * (4 * players_numb * T_horizon + players_numb + 1)
-        params = (c, A, b, A_eq, b_eq, bounds, T_horizon)
+        bounds = ((0, None),) * (4 * self.investors_number * const.T_HORIZON + self.investors_number + 1)
+        params = (c, A, b, A_eq, b_eq, bounds, const.T_HORIZON)
         # sol = core.find_core(params)
-        sol = core.find_core(p_cpu, T_horizon, coalition, players_numb, HC, betas, loads, expiration)
+        sol = core.find_core(self.p_cpu, const.T_HORIZON, self.coalition, self.investors_number, self.hosting_capacity,
+                             betas, loads, self.duration_cpu)
         return sol
 
+    def calculate_core(self, infos_all_coal_one_config):
+        A_eq = np.ones(shape=self.investors_number)
+        b_eq = infos_all_coal_one_config[-1]["coalitional_payoff"]
 
-def calculate_core(infos_all_coal_one_config):
-    players_numb = self.get_params()[5]
-    A_eq = np.ones(shape=players_numb)
-    b_eq = infos_all_coal_one_config[-1]["coalitional_payoff"]
+        for i in range(len(infos_all_coal_one_config) - 1):
+            tmp0 = [0] * self.investors_number
+            for pl in infos_all_coal_one_config[i]["coalition"]:
+                tmp0[pl[0]] = -1
+            if i == 0:
+                tmp = tmp0
+            else:
+                tmp = np.concatenate((tmp, tmp0))
+        A = [[-1, 0, 0], [0, -1, 0], [0, 0, -1], [-1, -1, 0], [-1, 0, -1], [0, -1, -1]]
+        b = []
 
-    for i in range(len(infos_all_coal_one_config) - 1):
-        tmp0 = [0] * players_numb
-        for pl in infos_all_coal_one_config[i]["coalition"]:
-            tmp0[pl[0]] = -1
-        if i == 0:
-            tmp = tmp0
-        else:
-            tmp = np.concatenate((tmp, tmp0))
-    A = [[-1, 0, 0], [0, -1, 0], [0, 0, -1], [-1, -1, 0], [-1, 0, -1], [0, -1, -1]]
-    b = []
+        for info in infos_all_coal_one_config[:-1]:
+            b.append(-info["coalitional_payoff"])
 
-    for info in infos_all_coal_one_config[:-1]:
-        b.append(-info["coalitional_payoff"])
+        coefficients_min_y = [0] * (len(A[0]))
+        res = linprog(coefficients_min_y, A_eq=A_eq, b_eq=b_eq, A_ub=A, b_ub=b)
+        return res['x']
 
-    coefficients_min_y = [0] * (len(A[0]))
-    res = linprog(coefficients_min_y, A_eq=A_eq, b_eq=b_eq, A_ub=A, b_ub=b)
-    return res['x']
+    def set_coalition(self, coalition):
+        self.coalition = coalition
 
 
 def verify_properties(all_coal_payoff, coal_payoff, payoffs_vector):
