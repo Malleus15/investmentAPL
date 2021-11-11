@@ -1,6 +1,6 @@
 import math
 
-import coop_properties as cp
+import business_logic.coop_properties as cp
 from business_logic.game import Game
 
 

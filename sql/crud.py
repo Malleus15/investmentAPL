@@ -47,6 +47,5 @@ def create_user_investments(db: Session, investment: schemas.InvestmentCreate):
     db.refresh(db_investment)
     return db_investment
 
-
 def get_investments(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Investment).offset(skip).limit(limit).all()

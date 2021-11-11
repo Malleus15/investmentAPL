@@ -1,4 +1,5 @@
 import numpy as np
+import business_logic.constant as const
 
 from business_logic import utils
 from business_logic.game import Game
@@ -6,11 +7,12 @@ from business_logic.fair_game import FairGame
 
 
 def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capacity, duration_cpu,
-                    fairness=True, T_horizon=96):
+                    fairness=True):
     if fairness:
-        game = Game(investors_number, price_cpu, hosting_capacity, duration_cpu, T_horizon)
+        #CORREGGIII E DISCTINGUI FAIR E NON
+        game = FairGame(investors_number, price_cpu, hosting_capacity, duration_cpu)
     else:
-        game = FairGame(investors_number, price_cpu, hosting_capacity, duration_cpu, T_horizon)
+        game = FairGame(investors_number, price_cpu, hosting_capacity, duration_cpu)
     # the number of non realtime players is calculated removing from the investors number rt number and the Host
     # investor
     nrt_players_numb = investors_number - number_rt_players - 1
@@ -88,10 +90,18 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
 
         return grand_coal_payoff, payoff_vector, res[0], res[1]
 
+# the check of parameters is done by the business_logic and not by the DataBase because the business logic is up
+# to the business_logic
+def check_parameters(investors_number, rt_numb_invest, price_cpu, duration_cpu, hosting_capacity):
+    price_check = (const.MIN_PRICE_CPU <= price_cpu <= const.MAX_PRICE_CPU)
+    # limited for computational reasons
+    inv_num_check = (const.MIN_INV_NUM <= investors_number <= const.MAX_INV_NUM)
+    # years
+    duration_check = (const.MIN_DURATION <= duration_cpu <= const.MAX_DURATION)
+    # in milliCore
+    hc_check = (const.MIN_HC <= hosting_capacity <= const.MAX_HC)
+    # we check the rt investors are less than the numb of investors
+    rt_numb_check = (0 <= rt_numb_invest <= investors_number - 1)
+    return price_check and inv_num_check and duration_check and hc_check and rt_numb_check
 
-def _calculate_fair_payoff():
-    pass
 
-
-def _calculate_unfair_payoff():
-    pass

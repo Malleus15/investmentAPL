@@ -3,7 +3,7 @@ import numpy as np
 import business_logic.coop_properties as cp
 from business_logic import core
 from scipy.optimize import linprog
-import constant as const
+import business_logic.constant as const
 
 
 class Game:
@@ -13,21 +13,6 @@ class Game:
         self.duration_cpu = duration_cpu
         self.hosting_capacity = hosting_capacity
         self.investors_number = investors_number
-
-    # the check of parameters is done by the business_logic and not by the DataBase because the business logic is up
-    # to the business_logic
-    def check_parameters(self):
-        price_check = (const.MIN_PRICE_CPU <= self.price_cpu <= const.MAX_PRICE_CPU)
-        # limited for computational reasons
-        inv_num_check = (const.MIN_INV_NUM <= self.investors_number <= const.MAX_INV_NUM)
-        # years
-        duration_check = (const.MIN_DURATION <= self.duration_cpu <= const.MAX_DURATION)
-        # in milliCore
-        hc_check = (const.MIN_HC <= self.hosting_capacity <= const.MAX_HC)
-        # we check that ay least the main investor and one secondary investor is present
-        tmp = self.investors_array
-        array_check = (tmp.count("host") == 1) and (tmp.count("rt") >= 1 or tmp.count("nrt") >= 1)
-        return price_check and inv_num_check and duration_check and hc_check and array_check
 
     # this function convert the load from requests per timeslot
     # to millicore (computational resources needed to serve the load)

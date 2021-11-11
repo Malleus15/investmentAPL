@@ -63,10 +63,14 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 
 @app.post("/users/parameters/", response_model=schemas.Parameters)
 def create_investment_for_user(parameters: schemas.ParametersCreate, db: Session = Depends(get_db)):
-    # if business_logic.check_parameters(parameters):
-
-    # return crud.create_user_parameters(db=db, parameters=parameters)
-    raise HTTPException(status_code=400, detail="Bad request: some values in parameters are not allowed")
+    check = invst.check_parameters(parameters.investors_number,
+                                   parameters.number_rt_players,
+                                   parameters.price_cpu,
+                                   parameters.duration_cpu,
+                                   parameters.hosting_capacity)
+    if not check:
+        raise HTTPException(status_code=400, detail="Bad request: some values in parameters are not allowed")
+    return crud.create_user_parameters(db=db, parameters=parameters)
 
 
 @app.get("/parameters/{user_id}", response_model=List[schemas.Parameters])
@@ -76,24 +80,34 @@ def read_parameters(user_id: int, db: Session = Depends(get_db)):
 
 
 # calcola tutte le grandezze relative all'intera coalizione
-@app.post("/users/{parameters_id}/investment/", response_model=schemas.Investment)
+@app.post("/users/investment/", response_model=schemas.Investment)
 def create_investment_for_user(
-        parameters_id: int, investment_req: schemas.InvestmentReqBase, db: Session = Depends(get_db)
+        investment_req: schemas.InvestmentReqBase, db: Session = Depends(get_db)
 ):
     # firstly we find the parameters to use
-    db_params = crud.get_one_parameters_set(db, parameters_id=parameters_id)
+    db_params = crud.get_one_parameters_set(db, parameters_id=investment_req.parameters_id)
+    print(db_params)
     if db_params is None:
         raise HTTPException(status_code=404, detail="Parameters not found, parameters_id is wrong")
     # then we calculate the investment values
     # we don't pass directly the Parameters to reduce the dependency between packages
-    res = invst.simulate_invest(db_params.investors_number, db_params.number_rt_players,
-                                db_params.price_cpu, db_params.hosting_capacity, db_params.duration_cpu,
-                                investment_req.fairness)
+    (total_payoff, split_payoffs, split_revenues,
+     split_payments) = invst.simulate_invest(db_params.investors_number,
+                                             db_params.number_rt_players,
+                                             db_params.price_cpu,
+                                             db_params.hosting_capacity,
+                                             db_params.duration_cpu,
+                                             investment_req.fairness)
+    # cannot use it like a normal constructor
+    investment = schemas.InvestmentCreate(total_payoff=total_payoff,
+                                          split_payments=str(split_payments),
+                                          fairness=investment_req.fairness,
+                                          split_revenues=str(split_revenues),
+                                          split_payoffs=str(split_revenues),
+                                          parameters_id=investment_req.parameters_id
+                                          )
 
-    investment = schemas.InvestmentCreate(res.total_payoff, res.split_payoffs, res.split_revenues,
-                                          res.split_payments, investment_req.fairness, parameters_id)
-
-    return crud.create_user_investments(db=db, investment=investment, parameters_id=parameters_id)
+    return crud.create_user_investments(db=db, investment=investment)
 
 
 @app.get("/investments/", response_model=List[schemas.Investment])

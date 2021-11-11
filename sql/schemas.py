@@ -41,10 +41,10 @@ class User(UserBase):
         orm_mode = True
 
 
-
 class InvestmentReqBase(BaseModel):
     fairness: bool
     parameters_id: int
+
 
 class InvestmentBase(BaseModel):
     total_payoff: float

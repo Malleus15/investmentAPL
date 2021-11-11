@@ -1,7 +1,7 @@
 from itertools import chain, combinations
-import constant as const
+import business_logic.constant as const
 
-from investor import Investor
+from business_logic.investor import Investor
 
 
 def _all_permutations(iterable):

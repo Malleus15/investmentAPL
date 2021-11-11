@@ -1,5 +1,5 @@
 import numpy as np
-import constant as const
+import business_logic.constant as const
 
 
 class Investor:
