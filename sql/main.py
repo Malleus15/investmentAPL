@@ -4,9 +4,10 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
-#from business_logic import business_logic
 from sql import crud, models, schemas
 from sql.database import SessionLocal, engine
+
+from business_logic import investment as invst
 
 # to eliminate all tables in db
 # models.Base.metadata.drop_all(bind=engine)
@@ -62,9 +63,9 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 
 @app.post("/users/parameters/", response_model=schemas.Parameters)
 def create_investment_for_user(parameters: schemas.ParametersCreate, db: Session = Depends(get_db)):
-   # if business_logic.check_parameters(parameters):
+    # if business_logic.check_parameters(parameters):
 
-        #return crud.create_user_parameters(db=db, parameters=parameters)
+    # return crud.create_user_parameters(db=db, parameters=parameters)
     raise HTTPException(status_code=400, detail="Bad request: some values in parameters are not allowed")
 
 
@@ -77,9 +78,21 @@ def read_parameters(user_id: int, db: Session = Depends(get_db)):
 # calcola tutte le grandezze relative all'intera coalizione
 @app.post("/users/{parameters_id}/investment/", response_model=schemas.Investment)
 def create_investment_for_user(
-        parameters_id: int, investment: schemas.InvestmentCreate, db: Session = Depends(get_db)
+        parameters_id: int, investment_req: schemas.InvestmentReqBase, db: Session = Depends(get_db)
 ):
-    #CI VUOLE UNA FUNZIONE CHE DAI PARAMETRI GENERA L'INVESTIMENTO  E SE VIENE
+    # firstly we find the parameters to use
+    db_params = crud.get_one_parameters_set(db, parameters_id=parameters_id)
+    if db_params is None:
+        raise HTTPException(status_code=404, detail="Parameters not found, parameters_id is wrong")
+    # then we calculate the investment values
+    # we don't pass directly the Parameters to reduce the dependency between packages
+    res = invst.simulate_invest(db_params.investors_number, db_params.number_rt_players,
+                                db_params.price_cpu, db_params.hosting_capacity, db_params.duration_cpu,
+                                investment_req.fairness)
+
+    investment = schemas.InvestmentCreate(res.total_payoff, res.split_payoffs, res.split_revenues,
+                                          res.split_payments, investment_req.fairness, parameters_id)
+
     return crud.create_user_investments(db=db, investment=investment, parameters_id=parameters_id)
 
 

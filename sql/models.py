@@ -21,7 +21,7 @@ class Parameters(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     investors_number = Column(Integer, index=True)
-    investors_type_array = Column(String, index=True)
+    number_rt_players = Column(Integer, index=True)
     price_cpu = Column(Float, index=True)
     hosting_capacity = Column(Integer, index=True)
     # years

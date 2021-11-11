@@ -36,6 +36,10 @@ def get_parameters(db: Session, user_id: int):
     return db.query(models.Parameters).filter(models.Parameters.user_id == user_id).all()
 
 
+def get_one_parameters_set(db: Session, parameters_id: int):
+    return db.query(models.Parameters).filter(models.Parameters.id == parameters_id).first()
+
+
 def create_user_investments(db: Session, investment: schemas.InvestmentCreate):
     db_investment = models.Investment(**investment.dict())
     db.add(db_investment)

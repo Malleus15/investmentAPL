@@ -1,11 +1,11 @@
 import numpy as np
 
 from business_logic import utils
-from business_logic.game import Game
+from business_logic.fair_game import FairGame
 
 
 def main(investors_number, number_rt_players, price_cpu, hosting_capacity, duration_cpu):
-    game = Game(investors_number, price_cpu, hosting_capacity, duration_cpu)
+    game = FairGame(investors_number, price_cpu, hosting_capacity, duration_cpu)
     # the number of non realtime players is calculated removing from the investors number rt number and the Host
     # investor
     nrt_players_numb = investors_number - number_rt_players - 1
@@ -35,8 +35,52 @@ def main(investors_number, number_rt_players, price_cpu, hosting_capacity, durat
             game.set_coalition(coalition)
             # total payoff is the result of the maximization of the v(S)
             sol = game.calculate_coal_payoff()
-            print(sol['fun'])
+            if coalition == coalitions[-1]:
+                PIPPO = sol['x'][-1] * price_cpu
+                resources_alloc = sol['x']
+            # we store payoffs and the values that optimize the total coalition's payoff
+            coal_payoff = -sol['fun']
+            info_dict = {"configuration": {
+                "cpu_price_mCore": configuration,
+                "horizon": duration_cpu
+            }, "coalition": coalition,
+                "coalitional_payoff": coal_payoff,
+            }
 
+            # keeping the best coalition for a given configuration
+            infos_all_coal_one_config.append(info_dict)
+            all_coal_payoffs.append(coal_payoff)
+            if coalition == grand_coalition:
+                grand_coal_payoff = coal_payoff
+
+        # choosing info of all coalition for the best config
+
+        payoff_vector = game.shapley_value_payoffs(infos_all_coal_one_config,
+                                                   investors_number,
+                                                   coalitions)
+
+        print("Shapley value is in the core, the fair payoff is:", payoff_vector, "\n")
+        # Further verification of the solution (payoff vector) in the core
+        # check_core = business_logic.verify_properties(all_coal_payoffs, grand_coal_payoff, payoff_vector)
+
+        if True:
+            print("Coalition net incomes:", grand_coal_payoff)
+            print("Capacity:", sol['x'][-1], "\n")
+            print("Resources split", sol['x'][:-1], "\n")
+        all_infos.append(infos_all_coal_one_config)
+
+        print("Each player pay:\n")
+
+        print("Proceeding with calculation of revenues vector and payments\n")
+        # res = business_logic.how_much_rev_paym(payoff_vector, sol['x'])
+        res = np.identity(investors_number)
+
+        print("Revenue array:", res[0], "\n")
+        print("Payment array:", res[1], "\n")
+        if abs(PIPPO - sum(res[1])) > 0.001:
+            print("ERROR: the sum of single payments (for each players) doesn't match the  ")
+        else:
+            print("Total payment and sum of single payments are equal!\n")
 
 if __name__ == '__main__':
     main(3, 1, 0.5, 20000000000, 3)

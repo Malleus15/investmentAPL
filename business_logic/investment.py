@@ -2,11 +2,15 @@ import numpy as np
 
 from business_logic import utils
 from business_logic.game import Game
+from business_logic.fair_game import FairGame
 
 
-def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capacity, duration_cpu, T_horizon=96):
-
-    game = Game(investors_number, price_cpu, hosting_capacity, duration_cpu, T_horizon)
+def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capacity, duration_cpu,
+                    fairness=True, T_horizon=96):
+    if fairness:
+        game = Game(investors_number, price_cpu, hosting_capacity, duration_cpu, T_horizon)
+    else:
+        game = FairGame(investors_number, price_cpu, hosting_capacity, duration_cpu, T_horizon)
     # the number of non realtime players is calculated removing from the investors number rt number and the Host
     # investor
     nrt_players_numb = investors_number - number_rt_players - 1
@@ -82,7 +86,7 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
         else:
             print("Total payment and sum of single payments are equal!\n")
 
-        return None
+        return grand_coal_payoff, payoff_vector, res[0], res[1]
 
 
 def _calculate_fair_payoff():

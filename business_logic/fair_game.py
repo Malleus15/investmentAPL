@@ -10,7 +10,7 @@ class FairGame(Game):
         return cp.is_convex(coalitions_infos)
 
 
-    def shapley_value_payoffs(infos_all_coal_one_config, players_number, coalitions):
+    def shapley_value_payoffs(self, infos_all_coal_one_config, players_number, coalitions):
         x_payoffs = []
         N_factorial = math.factorial(players_number)
         for player in coalitions[-1]:
