@@ -14,7 +14,8 @@ class Game:
         self.hosting_capacity = hosting_capacity
         self.investors_number = investors_number
 
-    # the check of parameters is done by the business_logic and not by the DataBase because the business logic is up to the business_logic
+    # the check of parameters is done by the business_logic and not by the DataBase because the business logic is up
+    # to the business_logic
     def check_parameters(self):
         price_check = (const.MIN_PRICE_CPU <= self.price_cpu <= const.MAX_PRICE_CPU)
         # limited for computational reasons
@@ -30,49 +31,43 @@ class Game:
 
     # this function convert the load from requests per timeslot
     # to millicore (computational resources needed to serve the load)
-    def _convert_load_at_t(self, investor_type):
-        # if a real time SP, e.g. Peugeot
-        if investor_type == "rt":
-            # eta is the average value to generate load
-            # sigma is the variability of the range in which we generate the variables
-            load = self._generate_load(const.RT_ETA, const.RT_SIGMA)
-        # if not real time SP, e.g. Netflix
-        else:
-            load = self._generate_load(const.NRT_ETA, const.NRT_SIGMA)
-        # converting load in needed resources
-        converted_load = load * const.GAMMA
-        return converted_load
 
     def calculate_coal_payoff(self):
         # matrix with all the b for each player
         b = np.zeros(shape=self.investors_number * const.T_HORIZON)
-        # if the network operator is not in the coalition or It is alone etc...
-        if (0, 'NO') not in self.coalition or ((0, 'NO'),) == self.coalition or (len(self.coalition) == 0) or (
-                len(self.coalition) == 1):
-            pass
-        else:
-            # we calculate utility function at t for a player only for SPs
-            # coalition is a tuple that specify the type of player also
-            indx = 2
-            for player in self.coalition[1:]:
-                # in the paper y_t^S
-                for t in range(const.T_HORIZON):
-                    player_type = player[1]
-                    tmp0 = self._player_utility_t(player_type)
-                    b[indx] = tmp0
-                    indx += 1
-                # we divide by 2 the used resources because we need to split the payoff in a non fair way adding a
-                # false use of resources by the NO in order to pay the NO for his presence, in fact the cpu exists
-                # thanks to him
-        # cost vector with benefit factor and cpu price
-        # we use a minimize-function, so to maximize we minimize the opposite
-        # Creating c vector
-        tmp0 = self.duration_cpu * np.concatenate(
-            (np.zeros(shape=const.T_HORIZON), betas[0] * np.ones(shape=const.T_HORIZON),
-             betas[1] * np.ones(shape=const.T_HORIZON)))
-        tmp1 = self.duration_cpu * const.CHI * np.ones(shape=(self.investors_number * const.T_HORIZON))
-        tmp2 = np.zeros(shape=self.investors_number)
-        c = np.concatenate((tmp0, tmp1, tmp2, [-self.p_cpu]), axis=0)
+        c = np.zeros(shape=2 * self.investors_number * const.T_HORIZON + self.investors_number + 1)
+        # if the network operator is not in the coalition or It is alone etc..
+        check_NO = next((x for x in self.coalition if x.type == 'NO'), True)
+        # print((check_NO,) == self.coalition, (check_NO,), self.coalition)
+        # I write the comparison == with true because if no I return the object in some case
+        condition = check_NO == True or (check_NO,) == self.coalition or (len(self.coalition) == 0) or (
+                len(self.coalition) == 1)
+        # print("condition", condition)
+
+        if not condition:
+            # we calculate utility function for all t for a player only for SPs
+            # coalition is a tuple of investors
+            b = np.array([])
+            c = np.array([])
+
+            for i in range(self.investors_number):
+                # if there is that investor in the coalition we create the array for that player
+                check = next((x for x in self.coalition if x.index == i), False)
+                if check!=False:
+                    tmp0 = check.converted_load_all_t()
+                    tmp1 = check.beta * np.ones(shape=const.T_HORIZON)
+                else:
+                    tmp0 = np.zeros(shape=const.T_HORIZON)
+                    tmp1 = tmp0
+
+                b = np.concatenate((b, tmp0))
+                c = np.concatenate((c, tmp1))
+
+            # Creating c vector
+            # cost vector with benefit factor and cpu price
+            c = np.concatenate((c, np.zeros(shape=self.investors_number),
+                                const.CHI * np.ones(shape=self.investors_number * const.T_HORIZON), [-self.p_cpu]))
+
         # Creating A matrix
         identity = np.identity(self.investors_number * const.T_HORIZON)
         zeros = np.zeros(shape=(self.investors_number * const.T_HORIZON, self.investors_number * const.T_HORIZON))
@@ -108,9 +103,7 @@ class Game:
         # for A_ub and b_ub I change the sign to reduce the matrices in the desired form
         bounds = ((0, None),) * (4 * self.investors_number * const.T_HORIZON + self.investors_number + 1)
         params = (c, A, b, A_eq, b_eq, bounds, const.T_HORIZON)
-        # sol = core.find_core(params)
-        sol = core.find_core(self.p_cpu, const.T_HORIZON, self.coalition, self.investors_number, self.hosting_capacity,
-                             betas, loads, self.duration_cpu)
+        sol = core.find_core(params)
         return sol
 
     def calculate_core(self, infos_all_coal_one_config):
@@ -138,27 +131,26 @@ class Game:
     def set_coalition(self, coalition):
         self.coalition = coalition
 
-
-def verify_properties(all_coal_payoff, coal_payoff, payoffs_vector):
-    print("Verifying properties of payoffs \n")
-    if cp.is_an_imputation(coal_payoff, payoffs_vector):
-        print("The vector is an imputation (efficiency + individual rationality)!\n")
-        print("Check if payoff vector is group rational...\n")
-        if cp.is_group_rational(all_coal_payoff, -coal_payoff):
-            print("The payoff vector is group rational!\n")
-            print("The payoff vector is in the core!\n")
-            print("Core verification terminated SUCCESSFULLY!\n")
-            return True
+    def verify_properties(self, all_coal_payoff, coal_payoff, payoffs_vector):
+        print("Verifying properties of payoffs \n")
+        if cp.is_an_imputation(coal_payoff, payoffs_vector):
+            print("The vector is an imputation (efficiency + individual rationality)!\n")
+            print("Check if payoff vector is group rational...\n")
+            if cp.is_group_rational(all_coal_payoff, -coal_payoff):
+                print("The payoff vector is group rational!\n")
+                print("The payoff vector is in the core!\n")
+                print("Core verification terminated SUCCESSFULLY!\n")
+                return True
+            else:
+                print("The payoff vector isn't group rational!\n")
+                print("The payoff vector is not in the core!\n")
+                print("Core verification terminated unsuccessfully!\n")
         else:
-            print("The payoff vector isn't group rational!\n")
-            print("The payoff vector is not in the core!\n")
+            print("The payoff vector isn't an imputation\n")
             print("Core verification terminated unsuccessfully!\n")
-    else:
-        print("The payoff vector isn't an imputation\n")
-        print("Core verification terminated unsuccessfully!\n")
-    return False
+        return False
 
-    def how_much_rev_paym(self, payoff_vector, w):
+    def split_rev_paym(self, payoff_vector, w):
         p_cpu, T_horizon, coalition, _, beta, players_numb, chi, alpha, HC, betas, gammas, loads, expiration = get_params()
         # Creating c vector
         tmp0 = expiration * np.concatenate(
@@ -176,12 +168,13 @@ def verify_properties(all_coal_payoff, coal_payoff, payoffs_vector):
         identity = np.identity(players_numb - 1)
         tmp2 = np.concatenate((identity, zeros), axis=1)
         A_eq = np.concatenate((tmp0, tmp1, tmp2), axis=0)
-        print(A_eq)
         # building b vector
         b_eq = np.zeros(shape=(players_numb + 1))
         tmp0 = (np.array(payoff_vector[:-1]) / (sum(payoff_vector) + 0.000001)) * (sum(payoff_vector) + p_cpu * w[-1])
+
         for i in range(players_numb):
             b_eq[i] = payoff_vector[i]
+
         b_eq[-1] = np.matmul(w[:len(beta_vec)], beta_vec)
         coefficients_min_y = [0] * (len(A_eq[0]))
         b_eq = np.concatenate((np.array(b_eq), tmp0), axis=0)

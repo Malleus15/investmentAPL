@@ -9,6 +9,7 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
     game = Game(investors_number, price_cpu, hosting_capacity, duration_cpu, T_horizon)
     # the number of non realtime players is calculated removing from the investors number rt number and the Host
     # investor
+    nrt_players_numb = investors_number - number_rt_players - 1
 
     # each coalition element is a tuple player = (id, type)
     coalitions = utils.feasible_permutations(investors_number, number_rt_players)

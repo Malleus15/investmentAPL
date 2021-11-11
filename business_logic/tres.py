@@ -35,6 +35,8 @@ def main(investors_number, number_rt_players, price_cpu, hosting_capacity, durat
             game.set_coalition(coalition)
             # total payoff is the result of the maximization of the v(S)
             sol = game.calculate_coal_payoff()
+            print(sol['fun'])
+
 
 if __name__ == '__main__':
     main(3, 1, 0.5, 20000000000, 3)
