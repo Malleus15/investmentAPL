@@ -2,7 +2,6 @@ import numpy as np
 import business_logic.constant as const
 
 from business_logic import utils
-from business_logic.game import Game
 from business_logic.fair_game import FairGame
 
 
@@ -103,5 +102,3 @@ def check_parameters(investors_number, rt_numb_invest, price_cpu, duration_cpu, 
     # we check the rt investors are less than the numb of investors
     rt_numb_check = (0 <= rt_numb_invest <= investors_number - 1)
     return price_check and inv_num_check and duration_check and hc_check and rt_numb_check
-
-

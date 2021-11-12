@@ -9,12 +9,15 @@ from sql.database import SessionLocal, engine
 
 from business_logic import investment as invst
 
+from fastapi.security import HTTPBasic
+
 # to eliminate all tables in db
 # models.Base.metadata.drop_all(bind=engine)
 # here we create all the tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+security = HTTPBasic()
 
 
 @app.middleware("http")
@@ -41,9 +44,9 @@ def get_db(request: Request):
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_email(db, email=user.email)
+    db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
 
 
@@ -114,7 +117,6 @@ def create_investment_for_user(
 def read_investments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     investments = crud.get_investments(db, skip=skip, limit=limit)
     return investments
-
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")
