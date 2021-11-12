@@ -10,6 +10,7 @@ from sql.database import SessionLocal, engine
 from business_logic import investment as invst
 
 from fastapi.security import HTTPBasic
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 # to eliminate all tables in db
 # models.Base.metadata.drop_all(bind=engine)
@@ -79,6 +80,7 @@ def create_investment_for_user(parameters: schemas.ParametersCreate, db: Session
 @app.get("/parameters/{user_id}", response_model=List[schemas.Parameters])
 def read_parameters(user_id: int, db: Session = Depends(get_db)):
     parameters = crud.get_parameters(db, user_id=user_id)
+
     return parameters
 
 
@@ -117,6 +119,36 @@ def create_investment_for_user(
 def read_investments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     investments = crud.get_investments(db, skip=skip, limit=limit)
     return investments
+
+
+#################################
+#authentication
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def _get_user(db, username: str):
+    db_user = crud.get_user_by_username(db, username=username)
+    print(db_user)
+    if db_user:
+        return db_user
+
+def fake_decode_token(db, token):
+    # This doesn't provide any security at all
+    # Check the next version
+    user = _get_user(db, token)
+    return user
+
+
+@app.post("/token")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = _get_user(db, form_data.username)
+    print(user.hashed_password)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    if not form_data.password == user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": user.username, "token_type": "bearer"}
+
+
 
 if __name__ == '__main__':
     uvicorn.run(app, host="127.0.0.1", port=5000, log_level="info")
