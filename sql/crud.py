@@ -51,6 +51,7 @@ def create_user_investments(db: Session, investment: schemas.InvestmentCreate):
     return db_investment
 
 
-def get_investments(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Investment).offset(skip).limit(limit).all()
-
+def get_investments(db: Session, user_id: int):
+    tmp = db.query(models.Investment).join(models.Parameters)\
+        .filter(models.Parameters.user_id == user_id).all()
+    return tmp

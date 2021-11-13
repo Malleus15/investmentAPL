@@ -86,7 +86,7 @@ def read_parameters(user_id: int, db: Session = Depends(get_db)):
 
 # calcola tutte le grandezze relative all'intera coalizione
 @app.post("/users/investment/", response_model=schemas.Investment)
-def create_investment_for_user(
+async def create_investment_for_user(
         investment_req: schemas.InvestmentReqBase, db: Session = Depends(get_db)
 ):
     # firstly we find the parameters to use
@@ -115,11 +115,10 @@ def create_investment_for_user(
     return crud.create_user_investments(db=db, investment=investment)
 
 
-@app.get("/investments/", response_model=List[schemas.Investment])
-def read_investments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    investments = crud.get_investments(db, skip=skip, limit=limit)
+@app.get("/investments/{user_id}", response_model=List[schemas.Investment])
+def read_investments(user_id: int, db: Session = Depends(get_db)):
+    investments = crud.get_investments(db, user_id=user_id)
     return investments
-
 
 #################################
 #authentication
@@ -154,6 +153,7 @@ async def get_current_active_user(current_user: schemas.User = Depends(get_curre
 
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    print(form_data)
     user = get_user(db, form_data.username)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
