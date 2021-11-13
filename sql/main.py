@@ -1,7 +1,7 @@
 from typing import List
 import uvicorn
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from sql import crud, models, schemas
@@ -125,29 +125,41 @@ def read_investments(skip: int = 0, limit: int = 100, db: Session = Depends(get_
 #authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def _get_user(db, username: str):
+def get_user(db, username: str):
     db_user = crud.get_user_by_username(db, username=username)
-    print(db_user)
     if db_user:
         return db_user
 
 def fake_decode_token(db, token):
     # This doesn't provide any security at all
     # Check the next version
-    user = _get_user(db, token)
+    user = get_user(db, token)
     return user
 
 
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+async def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = _get_user(db, form_data.username)
-    print(user.hashed_password)
+    user = get_user(db, form_data.username)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     if not form_data.password == user.hashed_password:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     return {"access_token": user.username, "token_type": "bearer"}
-
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ import business_logic.constant as const
 
 class Game:
     def __init__(self, investors_number, price_cpu, hosting_capacity, duration_cpu):
+        self.c_vec = None
         self.coalition = None
         self.p_cpu = price_cpu
         self.duration_cpu = duration_cpu
@@ -52,7 +53,8 @@ class Game:
             # cost vector with benefit factor and cpu price
             c = np.concatenate((c, np.zeros(shape=self.investors_number),
                                 const.CHI * np.ones(shape=self.investors_number * const.T_HORIZON), [-self.p_cpu]))
-
+            #store c to use it later
+            self.c_vec = c
         # Creating A matrix
         identity = np.identity(self.investors_number * const.T_HORIZON)
         zeros = np.zeros(shape=(self.investors_number * const.T_HORIZON, self.investors_number * const.T_HORIZON))
@@ -103,14 +105,17 @@ class Game:
                 tmp = tmp0
             else:
                 tmp = np.concatenate((tmp, tmp0))
-        A = [[-1, 0, 0], [0, -1, 0], [0, 0, -1], [-1, -1, 0], [-1, 0, -1], [0, -1, -1]]
-        b = []
+        tmp0 = -np.identity(self.investors_number)
+        tmp1 = tmp0 - np.ones(shape=(self.investors_number, self.investors_number))
+        A_ub = np.concatenate((tmp0, tmp1), axis=1)
+        A = [[-1, 0, 0], [0, -1, 0], [0, 0, -1], [0, -1, -1] [-1, 0, -1],[-1, -1, 0], ]
+        b_ub = []
 
         for info in infos_all_coal_one_config[:-1]:
-            b.append(-info["coalitional_payoff"])
+            b_ub.append(-info["coalitional_payoff"])
 
         coefficients_min_y = [0] * (len(A[0]))
-        res = linprog(coefficients_min_y, A_eq=A_eq, b_eq=b_eq, A_ub=A, b_ub=b)
+        res = linprog(coefficients_min_y, A_eq=A_eq, b_eq=b_eq, A_ub=A_ub, b_ub=b_ub)
         return res['x']
 
     def set_coalition(self, coalition):
@@ -135,33 +140,29 @@ class Game:
             print("Core verification terminated unsuccessfully!\n")
         return False
 
-    def split_rev_paym(self, payoff_vector, w):
-        p_cpu, T_horizon, coalition, _, beta, players_numb, chi, alpha, HC, betas, gammas, loads, expiration = get_params()
-        # Creating c vector
-        tmp0 = expiration * np.concatenate(
-            (np.zeros(shape=T_horizon), betas[0] * np.ones(shape=T_horizon), betas[1] * np.ones(shape=T_horizon)))
-        tmp1 = expiration * chi * np.ones(shape=(players_numb * T_horizon))
-        tmp2 = np.zeros(shape=players_numb)
-        beta_vec = np.concatenate((tmp0, tmp1, tmp2), axis=0)
+    def split_rev_paym(self, payoff_vector, resrc_split_vec):
+        # recovering c vector
+        c = self.c_vec
         # building A matrix
-        identity = np.identity(players_numb)
+        identity = np.identity(self.investors_number)
         tmp0 = np.concatenate((identity, -identity), axis=1)
-        ones = np.ones(shape=(1, players_numb))
-        zeros = np.zeros(shape=(1, players_numb))
+        ones = np.ones(shape=(1, self.investors_number))
+        zeros = np.zeros(shape=(1, self.investors_number))
         tmp1 = np.concatenate((ones, zeros), axis=1)
-        zeros = np.zeros(shape=(players_numb - 1, players_numb + 1))
-        identity = np.identity(players_numb - 1)
+        zeros = np.zeros(shape=(self.investors_number - 1, self.investors_number + 1))
+        identity = np.identity(self.investors_number - 1)
         tmp2 = np.concatenate((identity, zeros), axis=1)
         A_eq = np.concatenate((tmp0, tmp1, tmp2), axis=0)
         # building b vector
-        b_eq = np.zeros(shape=(players_numb + 1))
-        tmp0 = (np.array(payoff_vector[:-1]) / (sum(payoff_vector) + 0.000001)) * (sum(payoff_vector) + p_cpu * w[-1])
+        b_eq = np.zeros(shape=(self.investors_number + 1))
+        tmp0 = (np.array(payoff_vector[:-1]) / (sum(payoff_vector) + 0.000001)) * (sum(payoff_vector) +
+                                                                                   self.p_cpu * resrc_split_vec[-1])
 
-        for i in range(players_numb):
+        for i in range(self.investors_number):
             b_eq[i] = payoff_vector[i]
 
-        b_eq[-1] = np.matmul(w[:len(beta_vec)], beta_vec)
+        b_eq[-1] = np.matmul(resrc_split_vec[:len(c)], c)
         coefficients_min_y = [0] * (len(A_eq[0]))
         b_eq = np.concatenate((np.array(b_eq), tmp0), axis=0)
         res = linprog(coefficients_min_y, A_eq=A_eq, b_eq=b_eq, method="simplex")
-        return res['x'][0:players_numb], res['x'][players_numb:]
+        return res['x'][0:self.investors_number], res['x'][self.investors_number:]
