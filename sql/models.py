@@ -1,5 +1,6 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, DateTime
 from sqlalchemy.orm import relationship, backref
+from sqlalchemy.sql import func
 
 from .database import Base
 
@@ -45,3 +46,13 @@ class Investment(Base):
     parameters_id = Column(Integer, ForeignKey('parameters.id'))
 
     parameters = relationship("Parameters", backref=backref("investments", uselist=False))
+
+
+class Token(Base):
+    __tablename__ = "tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String, index=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(Integer, ForeignKey('users.id'))
+
+    user = relationship("User", backref=backref("tokens", uselist=False))

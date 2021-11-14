@@ -64,3 +64,17 @@ class Investment(InvestmentBase):
 
     class Config:
         orm_mode = True
+
+class TokenBase(BaseModel):
+    token: str
+    user_id: int
+
+
+class TokenCreate(TokenBase):
+    pass
+
+class Token(TokenCreate):
+    id: int
+
+    class Config:
+        orm_mode = True

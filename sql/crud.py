@@ -1,7 +1,4 @@
-from fastapi import Depends
-from fastapi.security import HTTPBasicCredentials
 from sqlalchemy.orm import Session
-import secrets
 
 from . import models, schemas
 
@@ -52,6 +49,14 @@ def create_user_investments(db: Session, investment: schemas.InvestmentCreate):
 
 
 def get_investments(db: Session, user_id: int):
-    tmp = db.query(models.Investment).join(models.Parameters)\
+    tmp = db.query(models.Investment).join(models.Parameters) \
         .filter(models.Parameters.user_id == user_id).all()
     return tmp
+
+
+def create_user_token(db: Session, token: schemas.Token):
+    db_token = models.Token(**token.dict())
+    db.add(db_token)
+    db.commit()
+    db.refresh(db_token)
+    return db_token

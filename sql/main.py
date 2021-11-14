@@ -11,6 +11,7 @@ from business_logic import investment as invst
 
 from fastapi.security import HTTPBasic
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+import utils
 
 # to eliminate all tables in db
 # models.Base.metadata.drop_all(bind=engine)
@@ -19,6 +20,8 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 security = HTTPBasic()
+
+current_user = ""
 
 
 @app.middleware("http")
@@ -54,6 +57,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.get("/users/", response_model=List[schemas.User])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = crud.get_users(db, skip=skip, limit=limit)
+
     return users
 
 
@@ -103,7 +107,7 @@ async def create_investment_for_user(
                                              db_params.hosting_capacity,
                                              db_params.duration_cpu,
                                              investment_req.fairness)
-    # cannot use it like a normal constructor
+    # creating investment
     investment = schemas.InvestmentCreate(total_payoff=total_payoff,
                                           split_payments=str(split_payments),
                                           fairness=investment_req.fairness,
@@ -120,14 +124,17 @@ def read_investments(user_id: int, db: Session = Depends(get_db)):
     investments = crud.get_investments(db, user_id=user_id)
     return investments
 
+
 #################################
-#authentication
+# authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 def get_user(db, username: str):
     db_user = crud.get_user_by_username(db, username=username)
     if db_user:
         return db_user
+
 
 def fake_decode_token(db, token):
     # This doesn't provide any security at all
@@ -136,8 +143,8 @@ def fake_decode_token(db, token):
     return user
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    user = fake_decode_token(token)
+async def get_current_user(db, token: str = Depends(oauth2_scheme)):
+    user = fake_decode_token(db, token)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -146,20 +153,24 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         )
     return user
 
+
 async def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
-    if current_user.disabled:
+    if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    print(form_data)
     user = get_user(db, form_data.username)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     if not form_data.password == user.hashed_password:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    return {"access_token": user.username, "token_type": "bearer"}
+    token = utils.get_random_string(length=160)
+    tkn = schemas.TokenBase(token=token, user_id=user.id)
+    crud.create_user_token(db, tkn)
+    return {"access_token": token, "token_type": "bearer"}
 
 
 if __name__ == '__main__':
