@@ -25,6 +25,8 @@ class Parameters(ParametersBase):
 
 
 class UserBase(BaseModel):
+    first_name: str
+    name: str
     username: str
 
 
@@ -35,7 +37,6 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: int
     is_active: bool
-    parameters: List[Parameters] = []
 
     class Config:
         orm_mode = True
@@ -78,3 +79,7 @@ class Token(TokenCreate):
 
     class Config:
         orm_mode = True
+
+class Login(BaseModel):
+    username: str
+    password: str

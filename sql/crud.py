@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -17,11 +20,19 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
 
 def create_user(db: Session, user: schemas.UserCreate):
     fake_hashed_password = user.password
-    db_user = models.User(username=user.username, hashed_password=fake_hashed_password)
+    db_user = models.User(first_name=user.first_name, name=user.name, username=user.username,
+                          hashed_password=fake_hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+def delete_user(db: Session, username: str):
+    db_user = db.query(models.User).filter(models.User.username == username).one()
+    tmp = db.delete(db_user)
+    db.commit()
+    return tmp
 
 
 def create_user_parameters(db: Session, parameters: schemas.ParametersCreate):
@@ -60,3 +71,8 @@ def create_user_token(db: Session, token: schemas.Token):
     db.commit()
     db.refresh(db_token)
     return db_token
+
+
+def get_token(db: Session, token: str):
+   return db.query(models.Token).filter(models.Token.token == token).one()
+

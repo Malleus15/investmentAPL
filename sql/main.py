@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 import uvicorn
 
@@ -10,7 +11,7 @@ from sql.database import SessionLocal, engine
 from business_logic import investment as invst
 
 from fastapi.security import HTTPBasic
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
 import utils
 
 # to eliminate all tables in db
@@ -20,8 +21,6 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 security = HTTPBasic()
-
-current_user = ""
 
 
 @app.middleware("http")
@@ -52,6 +51,18 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
+
+
+@app.post("/users/delete/{token}", response_model=schemas.User)
+def delete_user(token: str, log_in: schemas.Login, db: Session = Depends(get_db)):
+    if not crud.get_token(db, token):
+        raise HTTPException(status_code=400, detail="Token expired redo the login!")
+
+    db_user = crud.get_user_by_username(db, username=log_in.username)
+    if not db_user:
+        raise HTTPException(status_code=400, detail="User not found!")
+    if crud.delete_user(db=db, username=log_in.username) is None:
+        raise HTTPException(status_code=200, detail="User deleted")
 
 
 @app.get("/users/", response_model=List[schemas.User])
@@ -127,50 +138,32 @@ def read_investments(user_id: int, db: Session = Depends(get_db)):
 
 #################################
 # authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-
-def get_user(db, username: str):
-    db_user = crud.get_user_by_username(db, username=username)
-    if db_user:
-        return db_user
-
-
-def fake_decode_token(db, token):
-    # This doesn't provide any security at all
-    # Check the next version
-    user = get_user(db, token)
-    return user
-
-
-async def get_current_user(db, token: str = Depends(oauth2_scheme)):
-    user = fake_decode_token(db, token)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-
-async def get_current_active_user(current_user: schemas.User = Depends(get_current_user)):
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
-
+#Login
 @app.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = get_user(db, form_data.username)
+async def login(log_in: schemas.Login, db: Session = Depends(get_db)):
+    user = crud.get_user_by_username(db, username=log_in.username)
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    if not form_data.password == user.hashed_password:
+    if not log_in.password == user.hashed_password:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     token = utils.get_random_string(length=160)
     tkn = schemas.TokenBase(token=token, user_id=user.id)
     crud.create_user_token(db, tkn)
     return {"access_token": token, "token_type": "bearer"}
+
+
+def check_token(db: Session, token: str):
+    tmp = crud.get_token(db, token)
+    check = True
+    c = datetime.now() - tmp.timestamp
+    # convert to minutes
+    c = c.seconds / 60
+    # minute in which token is valid
+    token_expiration = 120
+    if c > token_expiration:
+        check = False
+    # check token expiration
+    return check
 
 
 if __name__ == '__main__':

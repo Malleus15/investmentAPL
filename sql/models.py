@@ -9,6 +9,8 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    first_name = Column(String, index=True)
+    name = Column(String, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
@@ -56,3 +58,5 @@ class Token(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
 
     user = relationship("User", backref=backref("tokens", uselist=False))
+
+
