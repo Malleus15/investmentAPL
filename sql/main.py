@@ -61,8 +61,6 @@ def delete_user(token: str, log_in: schemas.Login, db: Session = Depends(get_db)
     db_user = crud.get_user_by_username(db, username=log_in.username)
     if not db_user:
         raise HTTPException(status_code=400, detail="User not found!")
-    if crud.delete_user(db=db, username=log_in.username) is None:
-        raise HTTPException(status_code=200, detail="User deleted")
 
 
 @app.get("/users/", response_model=List[schemas.User])
@@ -159,7 +157,7 @@ def check_token(db: Session, token: str):
     # convert to minutes
     c = c.seconds / 60
     # minute in which token is valid
-    token_expiration = 120
+    token_expiration = 1
     if c > token_expiration:
         check = False
     # check token expiration
