@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List
 import uvicorn
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from sql import crud, models, schemas
@@ -15,7 +15,7 @@ from fastapi.security import HTTPBasic
 import utils
 
 # to eliminate all tables in db
-# models.Base.metadata.drop_all(bind=engine)
+#models.Base.metadata.drop_all(bind=engine)
 # here we create all the tables
 models.Base.metadata.create_all(bind=engine)
 
@@ -54,12 +54,15 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @app.post("/users/delete/{token}", response_model=schemas.User)
-def delete_user(token: str, log_in: schemas.Login, db: Session = Depends(get_db)):
+def delete_usr(token: str, log_in: schemas.Login, db: Session = Depends(get_db)):
     if not crud.get_token(db, token):
         raise HTTPException(status_code=400, detail="Token expired redo the login!")
 
-    db_user = crud.get_user_by_username(db, username=log_in.username)
-    if not db_user:
+    db_user = crud.delete_user(db, username=log_in.username)
+    if db_user is None:
+        raise HTTPException(status_code=200, detail="OK")
+
+    else:
         raise HTTPException(status_code=400, detail="User not found!")
 
 
@@ -70,16 +73,18 @@ def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return users
 
 
-@app.get("/users/{user_id}", response_model=schemas.User)
-def read_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = crud.get_user(db, user_id=user_id)
+@app.get("/users/{username}", response_model=schemas.User)
+def read_user(username: str, db: Session = Depends(get_db)):
+    db_user = crud.get_user(db, username=username)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
 
-@app.post("/users/parameters/", response_model=schemas.Parameters)
-def create_investment_for_user(parameters: schemas.ParametersCreate, db: Session = Depends(get_db)):
+@app.post("/users/parameters/{token}", response_model=schemas.Parameters)
+def create_parameters_for_user(token: str, parameters: schemas.ParametersCreate, db: Session = Depends(get_db)):
+    if not crud.get_token(db, token):
+        raise HTTPException(status_code=400, detail="Token expired redo the login!")
     check = invst.check_parameters(parameters.investors_number,
                                    parameters.number_rt_players,
                                    parameters.price_cpu,
@@ -90,8 +95,10 @@ def create_investment_for_user(parameters: schemas.ParametersCreate, db: Session
     return crud.create_user_parameters(db=db, parameters=parameters)
 
 
-@app.get("/parameters/{user_id}", response_model=List[schemas.Parameters])
-def read_parameters(user_id: int, db: Session = Depends(get_db)):
+@app.get("/parameters/{user_id}/{token}", response_model=List[schemas.Parameters])
+def read_parameters(user_id: int, token: str, db: Session = Depends(get_db)):
+    if not crud.get_token(db, token):
+        raise HTTPException(status_code=400, detail="Token expired redo the login!")
     parameters = crud.get_parameters(db, user_id=user_id)
 
     return parameters
@@ -136,7 +143,7 @@ def read_investments(user_id: int, db: Session = Depends(get_db)):
 
 #################################
 # authentication
-#Login
+# Login
 @app.post("/token")
 async def login(log_in: schemas.Login, db: Session = Depends(get_db)):
     user = crud.get_user_by_username(db, username=log_in.username)
@@ -157,7 +164,7 @@ def check_token(db: Session, token: str):
     # convert to minutes
     c = c.seconds / 60
     # minute in which token is valid
-    token_expiration = 1
+    token_expiration = 120
     if c > token_expiration:
         check = False
     # check token expiration

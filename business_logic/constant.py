@@ -24,7 +24,7 @@ MIN_PRICE_CPU = 0.05
 MAX_PRICE_CPU = 1
 # hosting capacity
 MIN_HC = 1000
-MAX_HC = 1000000000
+MAX_HC = 10000000000
 # duration cpu (years)
 MIN_DURATION = 1
 MAX_DURATION = 5
