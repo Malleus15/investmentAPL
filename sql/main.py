@@ -53,7 +53,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db=db, user=user)
 
 
-@app.post("/users/delete/{token}", response_model=schemas.User)
+@app.post("/users/delete/{token}")
 def delete_usr(token: str, log_in: schemas.Login, db: Session = Depends(get_db)):
     if not crud.get_token(db, token):
         raise HTTPException(status_code=400, detail="Token expired redo the login!")
@@ -104,14 +104,28 @@ def read_parameters(user_id: int, token: str, db: Session = Depends(get_db)):
     return parameters
 
 
+@app.get("/parameters/delete/{params_id}/{token}")
+def delete_params(params_id: int, token: str, db: Session = Depends(get_db)):
+    if not crud.get_token(db, token):
+        raise HTTPException(status_code=400, detail="Token expired redo the login!")
+
+    db_parameters = crud.delete_params(db, params_id=params_id)
+    if db_parameters is None:
+        raise HTTPException(status_code=200, detail="OK")
+
+    else:
+        raise HTTPException(status_code=400, detail="Parameters not found!")
+
+
 # calcola tutte le grandezze relative all'intera coalizione
-@app.post("/users/investment/", response_model=schemas.Investment)
-async def create_investment_for_user(
+@app.post("/users/investment/{token}", response_model=schemas.Investment)
+async def create_investment_for_user(token: str,
         investment_req: schemas.InvestmentReqBase, db: Session = Depends(get_db)
 ):
+    if not crud.get_token(db, token):
+        raise HTTPException(status_code=400, detail="Token expired redo the login!")
     # firstly we find the parameters to use
     db_params = crud.get_one_parameters_set(db, parameters_id=investment_req.parameters_id)
-    print(db_params)
     if db_params is None:
         raise HTTPException(status_code=404, detail="Parameters not found, parameters_id is wrong")
     # then we calculate the investment values
@@ -135,10 +149,26 @@ async def create_investment_for_user(
     return crud.create_user_investments(db=db, investment=investment)
 
 
-@app.get("/investments/{user_id}", response_model=List[schemas.Investment])
-def read_investments(user_id: int, db: Session = Depends(get_db)):
+@app.get("/investments/{user_id}/{token}", response_model=List[schemas.Investment])
+def read_investments(user_id: int, token: str, db: Session = Depends(get_db)):
+    if not crud.get_token(db, token):
+        raise HTTPException(status_code=400, detail="Token expired redo the login!")
+
     investments = crud.get_investments(db, user_id=user_id)
     return investments
+
+
+@app.get("/investments/delete/{invest_id}/{token}")
+def delete_params(invest_id: int, token: str, db: Session = Depends(get_db)):
+    if not crud.get_token(db, token):
+        raise HTTPException(status_code=400, detail="Token expired redo the login!")
+
+    db_investments = crud.delete_invest(db, invest_id=invest_id)
+    if db_investments is None:
+        raise HTTPException(status_code=200, detail="OK")
+
+    else:
+        raise HTTPException(status_code=400, detail="Parameters not found!")
 
 
 #################################

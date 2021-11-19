@@ -26,14 +26,14 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 
 def delete_user(db: Session, username: str):
-     try:
+    try:
         db_user = db.query(models.User).filter(models.User.username == username).first()
         db_token = db.query(models.Token).filter(models.Token.user_id == db_user.id).first()
         tmp = db.delete(db_user)
         db.delete(db_token)
         db.commit()
         return tmp
-     except:
+    except:
         tmp = ""
         return tmp
 
@@ -54,6 +54,18 @@ def get_one_parameters_set(db: Session, parameters_id: int):
     return db.query(models.Parameters).filter(models.Parameters.id == parameters_id).first()
 
 
+def delete_params(db: Session, params_id: int):
+    try:
+        db_params = db.query(models.Parameters).filter(models.Parameters.id == params_id).first()
+        tmp = db.delete(db_params)
+        db.delete(db_params)
+        db.commit()
+        return tmp
+    except:
+        tmp = ""
+        return tmp
+
+
 def create_user_investments(db: Session, investment: schemas.InvestmentCreate):
     db_investment = models.Investment(**investment.dict())
     db.add(db_investment)
@@ -66,6 +78,18 @@ def get_investments(db: Session, user_id: int):
     tmp = db.query(models.Investment).join(models.Parameters) \
         .filter(models.Parameters.user_id == user_id).all()
     return tmp
+
+
+def delete_invest(db: Session, invest_id: int):
+    try:
+        db_invest = db.query(models.Investment).filter(models.Investment.id == invest_id).first()
+        tmp = db.delete(db_invest)
+        db.delete(db_invest)
+        db.commit()
+        return tmp
+    except:
+        tmp = ""
+        return tmp
 
 
 def create_user_token(db: Session, token: schemas.Token):
