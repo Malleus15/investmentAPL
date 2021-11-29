@@ -39,7 +39,7 @@ class Game:
             for i in range(self.investors_number):
                 # if there is that investor in the coalition we create the array for that player
                 check = next((x for x in self.coalition if x.index == i), False)
-                if check!=False:
+                if check != False:
                     tmp0 = check.converted_load_all_t()
                     tmp1 = check.beta * np.ones(shape=const.T_HORIZON)
                 else:
@@ -53,7 +53,7 @@ class Game:
             # cost vector with benefit factor and cpu price
             c = np.concatenate((c, np.zeros(shape=self.investors_number),
                                 const.CHI * np.ones(shape=self.investors_number * const.T_HORIZON), [-self.p_cpu]))
-            #store c to use it later
+            # store c to use it later
             self.c_vec = c
         # Creating A matrix
         identity = np.identity(self.investors_number * const.T_HORIZON)
@@ -93,30 +93,19 @@ class Game:
         sol = core.find_core(params)
         return sol
 
-    def calculate_core(self, infos_all_coal_one_config):
-        A_eq = np.ones(shape=self.investors_number)
-        b_eq = infos_all_coal_one_config[-1]["coalitional_payoff"]
+    def calculate_payoffs(self, infos_all_coal_one_config, players_number, coalitions):
 
-        for i in range(len(infos_all_coal_one_config) - 1):
-            tmp0 = [0] * self.investors_number
-            for pl in infos_all_coal_one_config[i]["coalition"]:
-                tmp0[pl[0]] = -1
-            if i == 0:
-                tmp = tmp0
-            else:
-                tmp = np.concatenate((tmp, tmp0))
-        tmp0 = -np.identity(self.investors_number)
-        tmp1 = tmp0 - np.ones(shape=(self.investors_number, self.investors_number))
-        A_ub = np.concatenate((tmp0, tmp1), axis=1)
-        A = [[-1, 0, 0], [0, -1, 0], [0, 0, -1], [0, -1, -1] [-1, 0, -1],[-1, -1, 0], ]
-        b_ub = []
-
-        for info in infos_all_coal_one_config[:-1]:
-            b_ub.append(-info["coalitional_payoff"])
-
-        coefficients_min_y = [0] * (len(A[0]))
-        res = linprog(coefficients_min_y, A_eq=A_eq, b_eq=b_eq, A_ub=A_ub, b_ub=b_ub)
-        return res['x']
+        # getting the value of the grand coalition
+        grand_coal_payoff = infos_all_coal_one_config[-1]["coalitional_payoff"]
+        length = players_number
+        unfair_payoff = [] * length
+        tmp = grand_coal_payoff
+        # to share in unfair way the revenues
+        for i in range(length):
+            tmp /= 2
+            unfair_payoff.append(tmp)
+        msg = "The Unfair payoff is:"
+        return unfair_payoff, msg
 
     def set_coalition(self, coalition):
         self.coalition = coalition

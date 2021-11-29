@@ -2,19 +2,16 @@ import numpy as np
 import business_logic.constant as const
 
 from business_logic import utils
-from business_logic.fair_game import FairGame
+from business_logic.fair_game import FairGame, Game
 
 
 def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capacity, duration_cpu,
                     fairness=True):
     if fairness:
-        #CORREGGIII E DISCTINGUI FAIR E NON
+        # CORREGGIII E DISCTINGUI FAIR E NON
         game = FairGame(investors_number, price_cpu, hosting_capacity, duration_cpu)
     else:
-        game = FairGame(investors_number, price_cpu, hosting_capacity, duration_cpu)
-    # the number of non realtime players is calculated removing from the investors number rt number and the Host
-    # investor
-    nrt_players_numb = investors_number - number_rt_players - 1
+        game = Game(investors_number, price_cpu, hosting_capacity, duration_cpu)
 
     # each coalition element is a tuple player = (id, type)
     coalitions = utils.feasible_permutations(investors_number, number_rt_players)
@@ -60,15 +57,17 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
                 grand_coal_payoff = coal_payoff
 
         # choosing info of all coalition for the best config
-        payoff_vector = game.shapley_value_payoffs(infos_all_coal_one_config,
-                                                   investors_number,
-                                                   coalitions)
+        payoff_vector, msg = game.calculate_payoffs(infos_all_coal_one_config,
+                                                    investors_number,
+                                                    coalitions)
 
-        print("Shapley value is in the core, the fair payoff is:", payoff_vector, "\n")
+        print(msg, payoff_vector, "\n")
         # Further verification of the solution (payoff vector) in the core
+        # Future use
         # check_core = business_logic.verify_properties(all_coal_payoffs, grand_coal_payoff, payoff_vector)
-
-        if True:
+        check_core = True
+        # anyways is true for the theory
+        if check_core:
             print("Coalition net incomes:", grand_coal_payoff)
             print("Capacity:", sol['x'][-1], "\n")
             print("Resources split", sol['x'][:-1], "\n")
@@ -77,8 +76,7 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
         print("Each player pay:\n")
 
         print("Proceeding with calculation of revenues vector and payments\n")
-        # res = business_logic.how_much_rev_paym(payoff_vector, sol['x'])
-        res = np.identity(investors_number)
+        res = game.split_rev_paym(payoff_vector, sol['x'])
 
         print("Revenue array:", res[0], "\n")
         print("Payment array:", res[1], "\n")
@@ -88,6 +86,7 @@ def simulate_invest(investors_number, number_rt_players, price_cpu, hosting_capa
             print("Total payment and sum of single payments are equal!\n")
 
         return grand_coal_payoff, payoff_vector, res[0], res[1]
+
 
 # the check of parameters is done by the business_logic and not by the DataBase because the business logic is up
 # to the business_logic
